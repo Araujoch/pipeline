@@ -82,3 +82,13 @@ Calculates perplexity of the input. This script implements [PyPlexity](https://g
 Please, cite this paper if you use the modules of this NLP toolkit to clean a corpus:
 
 * Iria de-Dios-Flores, Silvia Paniagua Suárez, Cristina Carbajal Pérez, Daniel Bardanca Outeiriño, Marcos Garcia, and Pablo Gamallo. 2024. CorpusNÓS: A massive Galician corpus for training large language models. In Proceedings of the 16th International Conference on Computational Processing of Portuguese - Vol. 1, pages 593–599, Santiago de Compostela, Galicia/Spain. Association for Computational Lingustics.
+## Data Sources  
+Este proyecto utiliza los siguientes corpus como fuentes iniciales para la recolección de textos en guaraní y guaraní-paraguayo (jopará):  
+
+1. **CommonCrawl**: Corpus multilingüe que incluye páginas web con contenido en guaraní. [Enlace](https://commoncrawl.org/)  
+2. **OSCAR**: Corpus preprocesado y filtrado por idioma, con una sección dedicada al guaraní. [Enlace](https://huggingface.co/datasets/oscar)  
+3. **OPUS**: Colección de corpus paralelos y monolingües, incluyendo recursos en guaraní. [Enlace](https://opus.nlpl.eu/)  
+4. **MADLAB-400**: Corpus de dominio público con documentos en lenguas indígenas, como el guaraní. [Enlace](https://github.com/MaDDL-Lab/MADLAB-400)  
+5. **Wikipedia en Guaraní**: Artículos de Wikipedia en versión monolingüe. [Enlace](https://gn.wikipedia.org/)  
+
+Para más detalles, consultar el archivo [corpus_sources.csv](corpus_sources.csv).  
