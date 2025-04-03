@@ -2,5 +2,5 @@ nombre,descripción,referencia
 CommonCrawl,Corpus multilingüe que incluye páginas web con contenido en guaraní.,https://commoncrawl.org/  
 OSCAR,Corpus multilingüe preprocesado y filtrado por idioma, incluye guaraní.,https://huggingface.co/datasets/oscar  
 OPUS,Recopilación de corpus paralelos y monolingües, con algunos recursos en guaraní.,https://opus.nlpl.eu/  
-MADLAB-400,Corpus de dominio público con documentos en lenguas indígenas, incluyendo guaraní.,https://github.com/MaDDL-Lab/MADLAB-400  
+TATOEBA,Frases y oraciones bilingües (guaraní-español/inglés) ideales para entrenar modelos de traducción.,https://tatoeba.org/  
 Wikipedia en Guaraní,Artículos de Wikipedia en guaraní (versión monolingüe).,https://gn.wikipedia.org/  
