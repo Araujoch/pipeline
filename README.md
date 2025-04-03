@@ -88,7 +88,7 @@ Este proyecto utiliza los siguientes corpus como fuentes iniciales para la recol
 1. **CommonCrawl**: Corpus multilingüe que incluye páginas web con contenido en guaraní. [Enlace](https://commoncrawl.org/)  
 2. **OSCAR**: Corpus preprocesado y filtrado por idioma, con una sección dedicada al guaraní. [Enlace](https://huggingface.co/datasets/oscar)  
 3. **OPUS**: Colección de corpus paralelos y monolingües, incluyendo recursos en guaraní. [Enlace](https://opus.nlpl.eu/)  
-4. **MADLAB-400**: Corpus de dominio público con documentos en lenguas indígenas, como el guaraní. [Enlace](https://github.com/MaDDL-Lab/MADLAB-400)  
+4. **TATOEBA**: Frases y oraciones bilingües (guaraní-español) ideales para entrenar modelos de traducción. [Enlace](https://tatoeba.org/es/)  
 5. **Wikipedia en Guaraní**: Artículos de Wikipedia en versión monolingüe. [Enlace](https://gn.wikipedia.org/)  
 
-Para más detalles, consultar el archivo [corpus_sources.csv](corpus_sources.csv).  
+
