@@ -1,84 +1,36 @@
-# NLP_processing for Galician
-Pipeline developed to clean datasets used for training MT and LLM models.
-## Installation
+# Procesamiento de Texto - Segunda Entrega  
 
-it is necessary to install git-lfs to clone the repository
-``
-sudo apt-get install git-lfs
-``
+Herramientas para limpieza, normalización y descarga de corpus de texto.  
 
-## With docker
-``
-docker build -t proxectonos/nos:pipeline .
-``
-### How to process a file using the container
+## 🔥 Novedades (v2.1)
+- **Todos los outputs ahora generan archivos en formato `.jsonl`** para mejor eficiencia en pipelines posteriores
 
-``
-docker run --mount src=path/to/folder,target=/aliasfolderfordocker/,type=bind proxectonos/nos:pipeline command(tokenizer, detokenizer, etc) 
-``
+## 📌 Resumen  
+Este proyecto incluye herramientas mejoradas para el preprocesamiento de documentos de texto, con:  
+- **Filtrado de contenido irrelevante** (`formatter`).  
+- **Limpieza avanzada de "ruido"** (`encoder`).  
+- **Descarga automatizada de datasets** (`downloaddatasets.py`).  
 
-## Without Docker
-#### install requirements.txt
-``
-pip install -r requirements.txt
-``
+---
 
-#### make entrypoint executable
-```
-chmod +x entrypoint.sh
-./entrypoint.sh command (see below)
-```
-### run standard text cleaning routine
-By default it expects a .jsonl file. You can transform your .txt file into  .jsonl format by using the following command:
-```
-./entrypoint formatter -p $path_to_file -delimiter $regex_to_divide_txt -o $output_file_path
-```
- Executing the command ./entrypoint standard_pipeline $path_input_file calls the following commands:
-- encoding
-- deduplication
-- pyplexity (perplexity filter)
-- quelingua (filter by lang)
+## 🛠️ Comandos  
 
+### 1. `formatter`  
+**Función**:    
+    Filtra documentos eliminando aquellos con menos de 2 palabras (para garantizar contenido relevante).  
 
-## Available commands
-``
-sh entrypoint.sh  --help
-``
+**Uso**:  
+    ./entrypoint.sh formatter --path corpus/noisy/guarani.jsonl  -output corpus/clean/formatter_salida.jsonl
 
-- ``
-sh entrypoint.sh  formatter --path --output  --technique --delimiter
-``
-Transforms a .txt file input into a .jsonl file. The --delimiter can be any  regex pattern, preceded by $ e.g. $'#\|\|\|#' where  #\|\|\|# is the pattern used to divide the text.
-- ``
-sh entrypoint.sh  tokenizer --path --output
-``
-tokenizes a latin script text. This tokenizer was developed mainly for Galician.
-- ``
-sh entrypoint.sh  detokenizer --path --output
-``
-detokenizes a text previously parsed with tokenizer.
-- ``
-sh entrypoint.sh  filter_lang --path --output --filter_results_by_lang
-``
--line by line identification of the language a document is written in. If filter_results_by_lang is provided, the output file will only contain text in the specified language. filter_results_by_lang languages are 2 letter tags e.g. gl for Galician, es for Spanish, etc.
--``
-sh entrypoint.sh  recoglang --path
-``
-Reads an input text file and returns the language it is written in.
-- ``
-sh entrypoint.sh  encoder --path --output
-``
-fixes encoding issues in files.
-- ``
-sh entrypoint.sh  jaccard --path --output
-``
-Deduplicates files based on their Jaccard similarity.
-- ``
-sh entrypoint.sh pyplexity
-``
-Calculates perplexity of the input. This script implements [PyPlexity](https://github.com/citiususc/pyplexity.git)
+### 1. `encoder`  
+**Función**:  
+    Corrige errores comunes en textos:
 
-## How to cite this software
-Please, cite this paper if you use the modules of this NLP toolkit to clean a corpus:
+    Errores de codificación (ej.: UTF-8 mal interpretado).
 
-* Iria de-Dios-Flores, Silvia Paniagua Suárez, Cristina Carbajal Pérez, Daniel Bardanca Outeiriño, Marcos Garcia, and Pablo Gamallo. 2024. CorpusNÓS: A massive Galician corpus for training large language models. In Proceedings of the 16th International Conference on Computational Processing of Portuguese - Vol. 1, pages 593–599, Santiago de Compostela, Galicia/Spain. Association for Computational Lingustics.
+    Etiquetas HTML/XML residuales.
+
+Caracteres especiales no válidos.
+**Uso**:  
+    ./entrypoint.sh encoder --path  corpus/noisy/guarani.jsonl  --output  corpus/noisy/encoder_salida.jsonl
+

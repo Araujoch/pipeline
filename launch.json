@@ -1,0 +1,32 @@
+
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run encoder",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "python": "${workspaceFolder}/venv/bin/python",
+        //    "args": [
+        //         "encoder",
+        //         "--path",
+        //         "${workspaceFolder}/guarani.jsonl",
+        //         "--output",
+        //         "${workspaceFolder}/encoder_salida.jsonl"
+        //     ],
+        "args": [
+            "formatter",
+            "--path",
+            "${workspaceFolder}/encoder_salida.jsonl",
+            "--delimiter",
+            "\\n",
+            "--output",
+            "${workspaceFolder}/formatter_salida.jsonl"
+        ],
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/venv/lib/python3.10/site-packages:${workspaceFolder}"
+            }
+        }
+    ]
+}

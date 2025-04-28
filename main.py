@@ -19,6 +19,7 @@ import json
 import mmap
 import sys
 import os
+sys.path = [p for p in sys.path if 'dist-packages' not in p]
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 action = None
@@ -448,6 +449,8 @@ def parallelize(file, args):
     global action
     global lang
     path = os.path.abspath(file)
+    # Verificar si el archivo es JSONL por su extensión
+    is_jsonl = file.lower().endswith('.jsonl')
     if action == "filter_lang":
         # subprocesses.quelingua(text=path, _type="whole")
         subprocesses.quelingua_lines(path=path, args=args)
@@ -471,6 +474,27 @@ def parallelize(file, args):
                         line = subprocesses.tokenizer_paulo(line.decode("utf-8"))
                     elif action == "detokenizer":
                         line = subprocesses.tokenizer_paulo(line.decode("utf-8"))
+
+
+                    if action == "encoder" and is_jsonl:
+                        line_str = line.decode("utf-8").strip()
+                        try:
+                            data = json.loads(line_str)
+                            if 'text' in data:
+                                # Procesar solo el campo 'text'
+                                processed_text = encoding_fixer(
+                                    text=data['text'],
+                                    filtered_categories=args.categories,
+                                    filtered_characters=args.characters,
+                                    remove_characters=args.remove_characters,
+                                    emojies=args.emojies,
+                                )
+                                # Mantener la estructura JSON original
+                                data = {"text": processed_text}  # Crea un diccionario primero
+                                prd.write(json.dumps(data, ensure_ascii=False) + '\n')
+                                continue
+                        except json.JSONDecodeError:
+                            pass  # Si falla el parseo JSON, procesar como línea normal
 
                     elif action == "encoder":
                         line = encoding_fixer(

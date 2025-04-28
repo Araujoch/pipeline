@@ -5,10 +5,11 @@ import os
 import re
 
 def format_chunk(chunk:str,id:int):
-    word_count = len(chunk.split())
+    text = json.loads(chunk)
+    word_count = len(text['text'].split())
     data ={
         "id": id,
-        "text": chunk,
+        "text": text['text'],
         "num_words": word_count
     }
     return data
@@ -35,12 +36,12 @@ def process_text_delimiter(input_file, delimiter, output_file):
             parts = re.split(delimiter, chunk)
             for _, text in enumerate(parts[:-1]):
                 text = text.strip()
-                #print(_, text, delimiter)
-                #print(text_id, len(text.split()),text)
-                result_data.append(format_chunk(text,text_id))
-                text_id += 1
+                text_resul = format_chunk(text,text_id)
+                if(text_resul['num_words']>3):   
+                    result_data.append(text_resul)
+                    text_id += 1
             running_text = parts[-1]
-
+            #Descartamos que tienen menos tres palabras 
             if len(result_data) > 1000:
                 save_to_json_lines(result_data,output_file)
                 result_data = []
