@@ -1,30 +1,40 @@
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import ProcessPoolExecutor
-from methods.deduplicate import deduplicate
 from methods.jaccardsimilarity_deduplication import jaccard_deduplicate
+from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from methods.fix_newlines import fix_newlines_doc
 from methods.encoder.fixer import encoding_fixer
-from inspect import getmembers, isfunction
+from methods.subprocesses import quelingua_lines
 from methods.formatter import main as formatter
-from methods import subprocesses
-import codecs
+from methods.deduplicate import deduplicate
+from huggingface_hub import hf_hub_download
+from inspect import getmembers, isfunction
 from multiprocessing import Process
-from pathlib import Path
-from tqdm import tqdm
+
+from methods import subprocesses
 from operator import itemgetter
+from collections import Counter
+from functools import cache
+from pathlib import Path
+
+from tqdm import tqdm
+import fasttext
 import argparse
+
+import codecs
 import shutil
+import math
 import glob
 import json
 import mmap
 import sys
 import os
+
 sys.path = [p for p in sys.path if 'dist-packages' not in p]
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 action = None
 NUM_FILES = 4
-
+_loaded_model = None
 
 class List_methods(argparse.Action):
     def __call__(self, parser, namespace, values, option_string):
@@ -54,16 +64,16 @@ def _build_parser():
 
     subparsers = parser.add_subparsers(dest="action", help="choose one")
 
-    mt_quelingua_parser = subparsers.add_parser(
-        "mt_quelingua", help="check line by line if the data is in the correct language. Filters input to return only ", parents=[base_parser]
+    mt_glotID_parser = subparsers.add_parser(
+        "mt_glotID", help="check line by line if the data is in the correct language. Filters input to return only ", parents=[base_parser]
     )
 
-    mt_quelingua_parser.add_argument(
+    mt_glotID_parser.add_argument(
         "-ot", "--output_tag", type=str, required=True, help="output tag to append to file e.g. $filename.quelingua"
     )
-    mt_quelingua_parser.add_argument("-s", "--source", type=str, required=True, help="source file absolute path")
-    mt_quelingua_parser.add_argument("-t", "--target", type=str, required=True, help="target file absolute path")
-    mt_quelingua_parser.add_argument("-cl", "--correct_lang_source", type=str, required=True, help="correct expected language tag for each line in the source file")
+    mt_glotID_parser.add_argument("-s", "--source", type=str, required=True, help="source file absolute path")
+    mt_glotID_parser.add_argument("-t", "--target", type=str, required=True, help="target file absolute path")
+    mt_glotID_parser.add_argument("-cl", "--correct_lang_source", type=str, required=True, help="correct expected language tag for each line in the source file")
 
     formatter_parser = subparsers.add_parser(
         "formatter", help="format a file into jsonl format", parents=[base_parser]
@@ -292,22 +302,7 @@ def _build_parser():
         help="simply return perplexity score. No text modifications.",
         default=True,
     )
-    # pyplexity_parser.add_argument(
-    #     "--html_cleaning",
-    #     "-html",
-    #     type=bool,
-    #     action=argparse.BooleanOptionalAction,
-    #     help="enable HTMLTagRemover to extract text from html files",
-    #     default=False,
-    # )
-    # pyplexity_parser.add_argument(
-    #     "--text_cleaning",
-    #     "-text",
-    #     type=bool,
-    #     action=argparse.BooleanOptionalAction,
-    #     help="jsonl only.  clean text files that may include abnormal parts e.g. text in different languages, scripts, etc. The result is saved in a separate key.",
-    #     default=True,
-    # )
+
     pyplexity_parser.add_argument(
         "--perpl_limit",
         "-pl",
@@ -444,70 +439,101 @@ def _сheck_if_folder(input) -> bool:
     else:
         return False
 
+def load_lang_model():
+    """
+    Load the FastText language detection model.
+    First, look for 'model.bin' in the project root directory.
+    If not found, download the latest version from Hugging Face.
+    """
+    root = Path(__file__).parent.resolve()
+    local_model = root / "model.bin"
+    if local_model.is_file():
+        return fasttext.load_model(str(local_model))
 
+    # Fallback: download from HF
+    model_path = hf_hub_download(
+        repo_id="cis-lmu/glotlid",
+        filename="model.bin"
+    )
+    return fasttext.load_model(model_path)
+def detect_language(text: str, model) -> str:
+    """
+    Predict the language code for the given text using the fastText model.
+    Returns the label without the '__label__' prefix.
+    """
+    labels, _probs = model.predict(text.strip(), k=1)
+    return labels[0],_probs[0]
+@cache
+def load_lang_model():
+    """
+    Load the FastText language detection model.
+    First, look for 'model.bin' in the project root directory.
+    If not found, download the latest version from Hugging Face.
+    """
+    root = Path(__file__).parent.resolve()
+    local_model = root / "model.bin"
+    if local_model.is_file():
+        return fasttext.load_model(str(local_model))
+
+    # Fallback: download from HF
+    model_path = hf_hub_download(
+        repo_id="cis-lmu/glotlid",
+        filename="model.bin"
+    )
+    return fasttext.load_model(model_path)
 def parallelize(file, args):
     global action
     global lang
     path = os.path.abspath(file)
     # Verificar si el archivo es JSONL por su extensión
     is_jsonl = file.lower().endswith('.jsonl')
-    if action == "filter_lang":
-        # subprocesses.quelingua(text=path, _type="whole")
-        subprocesses.quelingua_lines(path=path, args=args)
-    elif action == "pyplexity":
-        print("Calculating perplexity", end=' ')
-        # print(f'python3 {dir_path}/external/pyplexity/pyplexity.py  {path} {args.pyplexity_args}')
-        subprocesses.pyplexity(path=path, args=args)
-    else:  # line by line
-        with open(f"{file}_p", "w+", encoding="utf-8") as prd:
-            with open(file, "r+b") as path_file:
-                total_lines = sum(1 for _ in path_file)
-                path_file.seek(0)  # Reset the file pointer back to the beginning
+    # model  = load_lang_model()
+    with open(f"{file}_p", "w+", encoding="utf-8") as prd:
+        with open(file, "r+b") as path_file:
+            total_lines = sum(1 for _ in path_file)
+            path_file.seek(0)  # Reset the file pointer back to the beginning
 
-                pbar = tqdm(
-                    total=total_lines
-                )  # Initialize the progress bar with the total number of lines
-                m_m = mmap.mmap(path_file.fileno(), 0)
+            pbar = tqdm(
+                total=total_lines
+            )  # Initialize the progress bar with the total number of lines
+            m_m = mmap.mmap(path_file.fileno(), 0)
 
-                for line in tqdm(iter(m_m.readline, b""), total=total_lines):
-                    if action == "tokenizer":
-                        line = subprocesses.tokenizer_paulo(line.decode("utf-8"))
-                    elif action == "detokenizer":
-                        line = subprocesses.tokenizer_paulo(line.decode("utf-8"))
+            for line in tqdm(iter(m_m.readline, b""), total=total_lines):
+                line_str = line.decode("utf-8").strip()
+                try:
+                    data = json.loads(line_str)
+                    # Procesar solo el campo 'text'
 
-
-                    if action == "encoder" and is_jsonl:
-                        line_str = line.decode("utf-8").strip()
-                        try:
-                            data = json.loads(line_str)
-                            if 'text' in data:
-                                # Procesar solo el campo 'text'
-                                processed_text = encoding_fixer(
-                                    text=data['text'],
-                                    filtered_categories=args.categories,
-                                    filtered_characters=args.characters,
-                                    remove_characters=args.remove_characters,
-                                    emojies=args.emojies,
-                                )
-                                # Mantener la estructura JSON original
-                                data = {"text": processed_text}  # Crea un diccionario primero
+                    if 'text' in data:
+                        if (action == "filter_lang"):
+                            processed_text = quelingua_lines(
+                                text  = data['text'],
+                                model = _loaded_model
+                            )
+                            if(processed_text):
+                                data['credibility'] = processed_text[1]
                                 prd.write(json.dumps(data, ensure_ascii=False) + '\n')
-                                continue
-                        except json.JSONDecodeError:
-                            pass  # Si falla el parseo JSON, procesar como línea normal
 
-                    elif action == "encoder":
-                        line = encoding_fixer(
-                            text=line,
-                            filtered_categories=args.categories,
-                            filtered_characters=args.characters,
-                            remove_characters=args.remove_characters,
-                            emojies=args.emojies,
-                        )
-                    prd.write(f"{line}\n")
-                m_m.close()
-                pbar.close()  # Close the progress bar after all tasks are completed
-        path_file.close()
+
+                        if (action == "encoder"):   
+                            processed_text = encoding_fixer(
+                                text=data['text'],
+                                filtered_categories=args.categories,
+                                filtered_characters=args.characters,
+                                remove_characters=args.remove_characters,
+                                emojies=args.emojies,
+                            )
+                            # Mantener la estructura JSON original
+                            data = {"text": processed_text}  # Crea un diccionario primero
+                            prd.write(json.dumps(data, ensure_ascii=False) + '\n')
+                        continue
+                except json.JSONDecodeError:
+                    pass  # Si falla el parseo JSON, procesar como línea normal
+
+                prd.write(f"{line}\n")
+            m_m.close()
+            pbar.close()  # Close the progress bar after all tasks are completed
+    path_file.close()
 
 
 def run():
@@ -519,8 +545,8 @@ def run():
         shutil.rmtree("./temp")
     action = args.action
 
-    if action == 'mt_quelingua':
-        subprocesses.mt_quelingua(args)
+    if action == 'mt_glotID':
+        subprocesses.mt_glotID(args)
         sys.exit()
 
     if args.action == "formatter":
@@ -578,9 +604,10 @@ def run():
             for file in sorted(
                 files, key=lambda x: int(x.split("/")[-1].split(".")[0])
             ):
-                with open(f"{file}_p", "r", encoding="utf-8", errors="ignore") as fp:
-                    for line in fp.readlines():
-                        tgt_file.write(line)
+                if os.path.exists(f"{file}_p"):
+                    with open(f"{file}_p", "r", encoding="utf-8", errors="ignore") as fp:
+                        for line in fp.readlines():
+                            tgt_file.write(line)
 
     if "remove_low_scores" in args and args.remove_low_scores:
         output_filename, output_extension = os.path.splitext(args.output)
@@ -603,4 +630,5 @@ def run():
             os.remove(file_path)
 
 if __name__ == "__main__":
+    _loaded_model = load_lang_model()
     run()
