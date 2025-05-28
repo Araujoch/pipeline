@@ -187,6 +187,14 @@ def _build_parser():
         required=False,
         help="If specified, filter file by lang tag e.g. gl, es, en, pt, etc.",
     )
+    filter_lang_parser.add_argument(
+        "-r",
+        "--reliability",
+        type=float,
+        default=0.8,
+        required=True,
+        help="If specified, filter file by reliability threshold. Default is 0.8"
+    )
     fix_new_lines_parser = subparsers.add_parser(
         "fix_new_lines",
         help="returns all text in the source file that matches the specified target language",
@@ -456,31 +464,7 @@ def load_lang_model():
         filename="model.bin"
     )
     return fasttext.load_model(model_path)
-def detect_language(text: str, model) -> str:
-    """
-    Predict the language code for the given text using the fastText model.
-    Returns the label without the '__label__' prefix.
-    """
-    labels, _probs = model.predict(text.strip(), k=1)
-    return labels[0],_probs[0]
-@cache
-def load_lang_model():
-    """
-    Load the FastText language detection model.
-    First, look for 'model.bin' in the project root directory.
-    If not found, download the latest version from Hugging Face.
-    """
-    root = Path(__file__).parent.resolve()
-    local_model = root / "model.bin"
-    if local_model.is_file():
-        return fasttext.load_model(str(local_model))
 
-    # Fallback: download from HF
-    model_path = hf_hub_download(
-        repo_id="cis-lmu/glotlid",
-        filename="model.bin"
-    )
-    return fasttext.load_model(model_path)
 def parallelize(file, args):
     global action
     global lang
@@ -508,7 +492,8 @@ def parallelize(file, args):
                         if (action == "filter_lang"):
                             processed_text = quelingua_lines(
                                 text  = data['text'],
-                                model = _loaded_model
+                                model = _loaded_model,
+                                args  = args,
                             )
                             if(processed_text):
                                 data['credibility'] = processed_text[1]
@@ -545,9 +530,6 @@ def run():
         shutil.rmtree("./temp")
     action = args.action
 
-    if action == 'mt_glotID':
-        subprocesses.mt_glotID(args)
-        sys.exit()
 
     if args.action == "formatter":
         args.delimiter = codecs.decode(args.delimiter, 'unicode_escape')

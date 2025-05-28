@@ -39,7 +39,14 @@ Caracteres especiales no válidos.
 ### 3. `filter_lang`  
 **Función**:    
     Identifica el lenguaje de cada uno de los documentos y descarga los que sean de baja confiabilidad
+    - Añade función `advanced_text_filter` con heurísticas de calidad:  
+    ✓ Capitalización consistente  
+    ✓ Longitud de oraciones  
+    ✓ Detección de repeticiones  
+    ✓ Caracteres válidos  
+    - Parametriza `reliability` (0.0-1.0) para filtrar por confianza en detección de idioma  
+
 **Uso**:  
-    ./entrypoint.sh filter_lang --path corpus/clean/formatter_salida.jsonl --output corpus/clean/filter_lang_salida.jsonl --filter_results_by_lang gn
+    ./entrypoint.sh filter_lang --path corpus/clean/formatter_salida.jsonl --output corpus/clean/filter_lang_salida.jsonl --filter_results_by_lang gn --reliability 0.8
 
 
