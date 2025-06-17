@@ -43,7 +43,8 @@ def advanced_text_filter(
     max_sentence_words: int = 100,
 
     max_repetitions: int = 10,
-    max_upper_ratio: float = 0.2
+    max_upper_ratio: float = 0.2,
+    discard: int = 4
 ) -> bool:
     """
     Applies advanced heuristic filtering to a text document.
@@ -58,49 +59,74 @@ def advanced_text_filter(
     Returns:
         bool: True if the document passes the filter, False otherwise.
     """
-
+    count_discard = 0
     # 1. Check credibility threshold
-    if len(text) < 100:  # Minimum length threshold
-        return False
+    if len(text) < 30:  # Minimum length threshold
+        count_discard+=1
+        #return False
     if len(text) > 10000:  # Maximum length threshold
-        return False
+        count_discard+=1
+        #return False
     # 2. Detect suspicious characters
     if re.search(r"[^\w\sáéíóúÁÉÍÓÚñÑãẽĩõũ.,:;!?()\[\]\'\"\-]", text):
-        return False
+        count_discard+=1
+        #return False
 
     # 3. Check uppercase ratio
     total_letters = sum(c.isalpha() for c in text)
     uppercase_letters = sum(c.isupper() for c in text)
     if total_letters > 0 and (uppercase_letters / total_letters) > max_upper_ratio:
-        return False
+        count_discard+=1
+        #return False
 
     # 4. Check sentence length bounds
     sentences = re.split(r'[.!?]', text)
     for sentence in sentences:
         words = sentence.strip().split()
         if len(words) < min_sentence_words or len(words) > max_sentence_words:
-            return False
+            count_discard+=1
+            #return False
 
     # 5. Check excessive word repetition
     words = re.findall(r'\b\w+\b', text.lower())
     word_freq = {word: words.count(word) for word in set(words)}
     if any(freq > max_repetitions for freq in word_freq.values()):
-        return False
+        count_discard+=1
+        #return False
 
-    return True
+    return True if count_discard<discard else False
 
-def detect_language(text: str, model) -> str:
+def detect_language_old(text: str, model) -> str:
     """
     Predict the language code for the given text using the fastText model.
     Returns the label without the '__label__' prefix.
     """
     labels, _probs = model.predict(text.strip(), k=1)
     return labels[0],_probs[0]
-def quelingua_lines(text:str,model,args):
+
+def quelingua_lines_old(text:str,model,args):
     # print(args.reliability) 
     if(advanced_text_filter(text)):
-        label,reliability= detect_language(text,model)
+        label,reliability= detect_language_old(text,model)
         if('__label__gug_Latn' in label and reliability>args.reliability):#
             return label,reliability
+    return None
+
+def detect_language(text: str, model) -> str:
+    """
+    Predict the language code for the given text using the fastText model.
+    Returns the label without the '__label__' prefix.
+    """
+    labels, _probs = model.predict(text.strip(), k=3)
+    return labels,_probs
+
+def quelingua_lines(text:str,model,args):
+    # print(args.reliability)
+    if(advanced_text_filter(text)):
+        label,reliability= detect_language(text,model)
+        result = dict(zip(label,reliability))
+        for lbl, rel in result.items():
+            if('__label__gug_Latn' in lbl and rel>args.reliability):
+                return lbl, rel
     return None
 

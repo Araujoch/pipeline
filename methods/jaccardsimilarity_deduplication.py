@@ -173,7 +173,7 @@ def jaccard_deduplicate(args):
         total_documents_in_file, total_documents_removed, total_documents_after_deduplication = find_similar_documents_minhash_dynamic_threshold(
             read_documents(args.path, max_documents=args.max_documents, batch_size=1000, input_format=args.mode),
             length_threshold=args.length_threshold,
-            output_file=args.output_file,
+            output_file =args.output_file,
             lsh_threshold=args.lsh_threshold,
             generate_deduplication_samples=args.generate_deduplication_samples,
             args=args
